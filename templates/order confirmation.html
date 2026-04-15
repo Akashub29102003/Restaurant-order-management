@@ -1,0 +1,92 @@
+<!-- templates/order_confirmation.html -->
+{% extends 'base.html' %}
+
+{% block title %}Order Confirmation{% endblock %}
+
+{% block styles %}
+<style>
+.confirmation-container {
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.success-icon {
+    font-size: 80px;
+    color: #28a745;
+    margin-bottom: 20px;
+}
+
+.order-details {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.order-items {
+    list-style: none;
+    padding: 0;
+}
+
+.order-items li {
+    padding: 10px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.total-row {
+    font-weight: bold;
+    font-size: 18px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid #ddd;
+}
+
+.btn-home {
+    background: #4a90e2;
+    color: white;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="confirmation-container">
+    <div class="success-icon">✓</div>
+    <h1>Order Confirmed!</h1>
+    <p>Thank you for your order. Your food will be served shortly.</p>
+    
+    <div class="order-details">
+        <h3>Order #{{ order_id }}</h3>
+        <p>Table: {{ order[1] }}</p>
+        <p>Date: {{ order[3] }}</p>
+        <p>Payment Method: {{ order[5] }}</p>
+        <p>Transaction ID: {{ order[6] }}</p>
+        
+        <h4>Order Items:</h4>
+        <ul class="order-items">
+            {% for item in items %}
+            <li>
+                <span>{{ item[2] }} x {{ item[4] }}</span>
+                <span>₹{{ (item[3] * item[4])|round(2) }}</span>
+            </li>
+            {% endfor %}
+            <li class="total-row">
+                <span>Total Amount:</span>
+                <span>₹{{ order[2] }}</span>
+            </li>
+        </ul>
+    </div>
+    
+    <button class="btn-home" onclick="window.location.href='/'">Back to Home</button>
+</div>
+{% endblock %}

@@ -23,50 +23,21 @@
     </div>
     
     <div class="category-grid">
-        <a href="{{ url_for('menu', category='breakfast', table_number=session.get('table_number')) }}" class="category-card breakfast-card glass-card fade-in-up" style="animation-delay: 0.2s;">
+        {% for category in categories %}
+        <a href="{{ url_for('menu', category=category, table_number=session.get('table_number')) }}" class="category-card glass-card fade-in-up" style="animation-delay: {{ 0.2 + loop.index0 * 0.1 }}s;">
             <div class="card-background">
-                <img src="{{ url_for('static', filename='images/idli.svg') }}" class="category-bg-image" alt="Breakfast">
-                <img src="{{ url_for('static', filename='images/dosa.svg') }}" class="category-bg-image-2" alt="Breakfast">
+                <img src="{{ url_for('static', filename='images/leaf.svg') }}" class="category-bg-image" alt="{{ category|e }}">
             </div>
             <div class="card-content">
                 <div class="category-icon">
-                    <img src="{{ url_for('static', filename='images/t_bath.svg') }}" alt="Breakfast Icon">
+                    <img src="{{ url_for('static', filename='images/leaf.svg') }}" alt="{{ category|e }} Icon">
                 </div>
-                <h2>Breakfast</h2>
-                <p>Start your day with traditional South Indian delicacies</p>
+                <h2>{{ category|e }}</h2>
+                <p>Browse delicious items from the {{ category|lower|e }} category</p>
                 <div class="card-arrow">→</div>
             </div>
         </a>
-        
-        <a href="{{ url_for('menu', category='lunch', table_number=session.get('table_number')) }}" class="category-card lunch-card glass-card fade-in-up" style="animation-delay: 0.4s;">
-            <div class="card-background">
-                <img src="{{ url_for('static', filename='images/thali.svg') }}" class="category-bg-image" alt="Lunch">
-                <img src="{{ url_for('static', filename='images/southmeal.svg') }}" class="category-bg-image-2" alt="Lunch">
-            </div>
-            <div class="card-content">
-                <div class="category-icon">
-                    <img src="{{ url_for('static', filename='images/palav.svg') }}" alt="Lunch Icon">
-                </div>
-                <h2>Lunch</h2>
-                <p>Hearty and satisfying meals for your midday cravings</p>
-                <div class="card-arrow">→</div>
-            </div>
-        </a>
-        
-        <a href="{{ url_for('menu', category='beverages', table_number=session.get('table_number')) }}" class="category-card beverages-card glass-card fade-in-up" style="animation-delay: 0.6s;">
-            <div class="card-background">
-                <img src="{{ url_for('static', filename='images/coffe.svg') }}" class="category-bg-image" alt="Beverages">
-                <img src="{{ url_for('static', filename='images/coldcofee.svg') }}" class="category-bg-image-2" alt="Beverages">
-            </div>
-            <div class="card-content">
-                <div class="category-icon">
-                    <img src="{{ url_for('static', filename='images/masala-t.svg') }}" alt="Beverages Icon">
-                </div>
-                <h2>Beverages</h2>
-                <p>Refreshing drinks to complement your perfect meal</p>
-                <div class="card-arrow">→</div>
-            </div>
-        </a>
+        {% endfor %}
     </div>
     <a href="{{ url_for('cart', table_number=session.get('table_number', '0')) }}" 
    class="cart-fab" 

@@ -175,14 +175,14 @@
                 <div class="stat-icon">🌅</div>
                 <div class="stat-content">
                     <h3>Breakfast Revenue</h3>
-                    <p class="stat-value">₹{{ "%.2f"|format(analytics.category_revenue.breakfast) }}</p>
+                    <p class="stat-value">₹{{ "%.2f"|format(analytics.category_revenue.get('breakfast', 0)) }}</p>
                 </div>
             </div>
             <div class="stat-card glass-card fade-in-up" style="animation-delay: 0.4s;">
                 <div class="stat-icon">🍽️</div>
                 <div class="stat-content">
                     <h3>Lunch Revenue</h3>
-                    <p class="stat-value">₹{{ "%.2f"|format(analytics.category_revenue.lunch) }}</p>
+                    <p class="stat-value">₹{{ "%.2f"|format(analytics.category_revenue.get('lunch', 0)) }}</p>
                 </div>
             </div>
             <div class="popular-items-card glass-card fade-in-up" style="animation-delay: 0.5s;">

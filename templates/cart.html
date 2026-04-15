@@ -4,6 +4,203 @@
 
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/cart.css') }}">
+<style>
+/* Payment Modal Styles */
+.payment-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.payment-modal-content {
+    max-width: 500px;
+    width: 90%;
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    animation: slideInUp 0.3s ease;
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.payment-modal-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.payment-modal-header .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.3s;
+}
+
+.payment-modal-header .close-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.payment-body {
+    padding: 20px;
+}
+
+.payment-amount {
+    text-align: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.amount-display {
+    font-size: 36px;
+    font-weight: bold;
+    color: #28a745;
+    margin: 10px 0 0 0;
+}
+
+.methods-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.payment-method-btn {
+    padding: 15px;
+    border: 2px solid #e0e0e0;
+    background: white;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 16px;
+}
+
+.payment-method-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.payment-method-btn.selected {
+    border-color: #4a90e2;
+    background: #e3f2fd;
+}
+
+.method-icon {
+    font-size: 28px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.payment-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.payment-actions button {
+    flex: 1;
+    padding: 12px;
+    font-size: 16px;
+}
+
+/* Toast styles for payment */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 8px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 2100;
+    animation: slideInRight 0.3s ease;
+    min-width: 250px;
+}
+
+.toast.success-toast {
+    border-left: 4px solid #28a745;
+}
+
+.toast.error-toast {
+    border-left: 4px solid #dc3545;
+}
+
+.toast-icon {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.success-toast .toast-icon {
+    color: #28a745;
+}
+
+.error-toast .toast-icon {
+    color: #dc3545;
+}
+
+.toast-message {
+    flex: 1;
+    font-size: 14px;
+}
+
+.toast.hide {
+    animation: slideOutRight 0.3s ease forwards;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -35,7 +232,7 @@
             {% if cart_items %}
                 <ul class="cart-items-list">
                     {% for item_id, item in cart_items.items() %}
-                    <li class="cart-item fade-in-up" style="animation-delay: {{ ('%.1f' % (loop.index0 * 0.1)) ~ 's' }};">
+                    <li class="cart-item fade-in-up delay-{{ loop.index0 }}">
                         <div class="item-info">
                             <span class="item-name">{{ item.name }}</span>
                             <div class="item-meta">
@@ -84,7 +281,7 @@
                 </div>
                 
                 <button class="btn btn-primary place-order-btn shine" {% if not cart_items %}disabled{% endif %}>
-                    <span class="btn-text">Confirm Order</span>
+                    <span class="btn-text">Confirm Order & Pay</span>
                     <span class="btn-loading" style="display: none;">
                         <span class="spinner"></span>
                         Processing...
@@ -95,22 +292,104 @@
     </div>
 
     <div class="cart-navigation fade-in-up">
-        <button class="btn btn-secondary nav-btn" onclick="window.location.href='{{ url_for('categories') }}'">
+        <a href="{{ url_for('categories') }}" class="btn btn-secondary nav-btn">
             <span>‹ Browse More</span>
-        </button>
+        </a>
     </div>
 
-<!-- Success Toast -->
-<div class="toast-container">
-    <div class="toast success-toast" id="successToast">
-        <div class="toast-icon">✓</div>
-        <div class="toast-message">Order placed successfully!</div>
+    <!-- Success Toast -->
+    <div class="toast-container">
+        <div class="toast success-toast" id="successToast" style="display: none;">
+            <div class="toast-icon">✓</div>
+            <div class="toast-message">Order placed successfully!</div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div id="paymentModal" class="payment-modal" style="display: none;">
+    <div class="payment-modal-content glass-card">
+        <div class="payment-modal-header">
+            <h2>💳 Complete Payment</h2>
+            <button onclick="closePaymentModal()" class="close-btn">&times;</button>
+        </div>
+        <div class="payment-body">
+            <div class="payment-amount">
+                <h3>Total Amount</h3>
+                <p class="amount-display">₹<span id="paymentAmount">0</span></p>
+            </div>
+            <div class="payment-methods">
+                <h3>Select Payment Method</h3>
+                <div class="methods-grid">
+                    <button class="payment-method-btn" data-method="UPI">
+                        <span class="method-icon">📱</span>
+                        <span>UPI</span>
+                    </button>
+                    <button class="payment-method-btn" data-method="Card">
+                        <span class="method-icon">💳</span>
+                        <span>Card</span>
+                    </button>
+                    <button class="payment-method-btn" data-method="Cash">
+                        <span class="method-icon">💰</span>
+                        <span>Cash</span>
+                    </button>
+                    <button class="payment-method-btn" data-method="QR Code">
+                        <span class="method-icon">📷</span>
+                        <span>QR Code</span>
+                    </button>
+                </div>
+            </div>
+            <div class="payment-actions">
+                <button class="btn btn-primary" id="processPaymentBtn" disabled>Process Payment</button>
+                <button class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+let selectedPaymentMethod = null;
+
+function showPaymentModal(amount) {
+    document.getElementById('paymentAmount').textContent = amount.toFixed(2);
+    document.getElementById('paymentModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    selectedPaymentMethod = null;
+    document.querySelectorAll('.payment-method-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    document.getElementById('processPaymentBtn').disabled = true;
+}
+
+function showToastMessage(message, type = 'success') {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast ${type === 'success' ? 'success-toast' : 'error-toast'} show`;
+    toast.innerHTML = `
+        <div class="toast-icon">${type === 'success' ? '✓' : '✕'}</div>
+        <div class="toast-message">${message}</div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.add('hide');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Add entrance animations to elements
     const animatedElements = document.querySelectorAll('.fade-in-up, .fade-in-left, .fade-in-right');
@@ -126,74 +405,113 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const confirmBtn = document.querySelector('.place-order-btn');
     if (confirmBtn) {
-        confirmBtn.addEventListener('click', function() {
-            const btnText = confirmBtn.querySelector('.btn-text');
-            const btnLoading = confirmBtn.querySelector('.btn-loading');
+        // Replace existing click handler with payment flow
+        confirmBtn.onclick = async function(e) {
+            e.preventDefault();
             
-            // Show loading state
-            confirmBtn.disabled = true;
-            btnText.style.display = 'none';
-            btnLoading.style.display = 'flex';
-            confirmBtn.classList.add('loading');
+            if (confirmBtn.disabled) return;
             
-            fetch('/submit_order', {method: 'POST'})
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        // Success state
-                        btnLoading.style.display = 'none';
-                        btnText.textContent = 'Order Placed! ✓';
-                        btnText.style.display = 'inline';
-                        confirmBtn.classList.remove('loading');
-                        confirmBtn.classList.add('success');
-                        
-                        // Show success toast
-                        showToast('Order placed successfully!', 'success');
-                        
-                        // Update the order status in the UI instead of redirecting
-                        const statusContainer = document.querySelector('.order-status');
-                        if (statusContainer) {
-                            statusContainer.textContent = 'Order Confirmed';
-                            statusContainer.className = 'order-status confirmed';
-                        }
-                    } else {
-                        // Error state
-                        resetButton();
-                        showToast(data.error || 'Order failed. Please try again.', 'error');
-                    }
-                })
-                .catch(() => {
-                    resetButton();
-                    showToast('Order failed. Please check your connection.', 'error');
+            // Get cart total
+            const totalElement = document.querySelector('.total-amount');
+            const totalText = totalElement.textContent.replace('₹', '');
+            const total = parseFloat(totalText);
+            
+            // Show payment modal
+            showPaymentModal(total);
+        };
+    }
+    
+    // Payment method selection
+    document.querySelectorAll('.payment-method-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedPaymentMethod = this.dataset.method;
+            document.getElementById('processPaymentBtn').disabled = false;
+        });
+    });
+    
+    // Process payment
+    const processBtn = document.getElementById('processPaymentBtn');
+    if (processBtn) {
+        processBtn.addEventListener('click', async function() {
+            if (!selectedPaymentMethod) return;
+            
+            this.disabled = true;
+            const originalText = this.textContent;
+            this.textContent = 'Processing...';
+            
+            try {
+                // First initiate payment
+                const initResponse = await fetch('/initiate_payment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
                 });
+                const initData = await initResponse.json();
                 
-            function resetButton() {
-                confirmBtn.disabled = false;
-                btnLoading.style.display = 'none';
-                btnText.style.display = 'inline';
-                confirmBtn.classList.remove('loading');
+                if (!initData.success) {
+                    throw new Error(initData.error || 'Failed to initiate payment');
+                }
+                
+                // Process payment
+                const paymentResponse = await fetch('/process_payment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({payment_method: selectedPaymentMethod})
+                });
+                const paymentData = await paymentResponse.json();
+                
+                if (paymentData.success) {
+                    showToastMessage('Payment successful! Redirecting...', 'success');
+                    
+                    // Close modal
+                    closePaymentModal();
+                    
+                    // Show success state on button
+                    const placeBtn = document.querySelector('.place-order-btn');
+                    const btnText = placeBtn.querySelector('.btn-text');
+                    const btnLoading = placeBtn.querySelector('.btn-loading');
+                    
+                    btnLoading.style.display = 'none';
+                    btnText.textContent = 'Order Placed! ✓';
+                    btnText.style.display = 'inline';
+                    placeBtn.classList.add('success');
+                    
+                    // Update order status
+                    const statusContainer = document.querySelector('.order-status');
+                    if (statusContainer) {
+                        statusContainer.textContent = 'Paid';
+                        statusContainer.className = 'order-status paid';
+                    }
+                    
+                    // Redirect to confirmation page
+                    setTimeout(() => {
+                        window.location.href = `/order_confirmation/${paymentData.order_id}`;
+                    }, 2000);
+                } else {
+                    throw new Error(paymentData.error || 'Payment failed');
+                }
+            } catch (error) {
+                console.error('Payment error:', error);
+                showToastMessage(error.message, 'error');
+                this.disabled = false;
+                this.textContent = originalText;
             }
         });
     }
     
-    function showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}-toast show`;
-        toast.innerHTML = `
-            <div class="toast-icon">${type === 'success' ? '✓' : '✕'}</div>
-            <div class="toast-message">${message}</div>
-        `;
-        
-        const container = document.querySelector('.toast-container');
-        container.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.classList.add('hide');
-            setTimeout(() => {
-                container.removeChild(toast);
-            }, 300);
-        }, 3000);
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('paymentModal');
+        if (event.target === modal) {
+            closePaymentModal();
+        }
     }
 });
+
+// Legacy showToast function for compatibility
+function showToast(message, type = 'success') {
+    showToastMessage(message, type);
+}
 </script>
 {% endblock %}

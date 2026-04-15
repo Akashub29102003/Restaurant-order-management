@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ category|capitalize|e }} Menu{% endblock %}
+{% block title %}{{ category|e }} Menu{% endblock %}
 
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/break.css') }}">
@@ -45,6 +45,28 @@
     animation: pop 0.3s ease;
 }
 
+.price-block {
+    margin-bottom: 0.8rem;
+}
+
+.price-grid {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.price-label {
+    display: inline-block;
+    min-width: 24px;
+    text-align: center;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.12);
+    padding: 0 0.55rem;
+    margin-right: 0.35rem;
+    font-size: 0.9rem;
+}
+
 @keyframes pop {
     0% { transform: scale(1); }
     50% { transform: scale(1.2); }
@@ -56,7 +78,7 @@
 {% block content %}
 <div class="menu-page-container">
     <div class="menu-header fade-in-up">
-        <h1>{{ category|capitalize|e }} Menu</h1>
+        <h1>{{ category|e }} Menu</h1>
         <a href="{{ url_for('categories') }}" class="btn btn-secondary">‹ Back to Categories</a>
     </div>
 
@@ -66,7 +88,16 @@
             <img src="{{ url_for('static', filename='images/' + item.image|e) }}" alt="{{ item.name|e }}" class="menu-item-img">
             <div class="menu-item-content">
                 <h3>{{ item.name|e }}</h3>
-                <p class="price">₹{{ item.price }}</p>
+                <div class="price-block">
+                    {% if item.price_regular and item.price_large %}
+                        <div class="price-grid">
+                            <div><span class="price-label">R</span> ₹{{ item.price_regular }}</div>
+                            <div><span class="price-label">L</span> ₹{{ item.price_large }}</div>
+                        </div>
+                    {% else %}
+                        <p class="price">₹{{ item.price }}</p>
+                    {% endif %}
+                </div>
                 <div class="cart-controls">
                     <button class="add-to-cart-btn btn btn-primary" 
                             data-id="{{ item.id }}" 
