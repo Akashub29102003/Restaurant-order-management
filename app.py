@@ -10,10 +10,16 @@ import sqlite3
 from collections import defaultdict
 from datetime import datetime, timedelta
 import hashlib
+import socket
 import uuid
 import qrcode
 from io import BytesIO
 from PIL import ImageDraw, ImageFont
+
+try:
+    from pyngrok import ngrok
+except ImportError:
+    ngrok = None
 
 load_dotenv()  # Load environment variables
 
@@ -255,16 +261,59 @@ def init_db():
     conn.close()
     print("Database initialized successfully!")
 
+
+def start_ngrok_tunnel():
+    if ngrok is None:
+        print("ngrok is not installed. Install pyngrok or disable ngrok support.")
+        return None
+
+    auth_token = os.getenv('NGROK_AUTH_TOKEN')
+    use_ngrok = os.getenv('USE_NGROK', 'false').lower() in ('1', 'true', 'yes')
+
+    if not use_ngrok and not auth_token:
+        return None
+
+    try:
+        if auth_token:
+            ngrok.set_auth_token(auth_token)
+        tunnel = ngrok.connect(port, "http", bind_tls=True)
+        public_url = tunnel.public_url
+        print(f"✅ ngrok tunnel started at {public_url}")
+        return public_url
+    except Exception as e:
+        print(f"ngrok tunnel start failed: {e}")
+        return None
+
+
+def get_server_base_url():
+    env_url = os.getenv('BASE_URL')
+    if env_url:
+        return env_url.rstrip('/')
+
+    ngrok_url = os.getenv('NGROK_URL')
+    if ngrok_url:
+        return ngrok_url.rstrip('/')
+
+    public_url = start_ngrok_tunnel()
+    if public_url:
+        return public_url.rstrip('/')
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(('8.8.8.8', 80))
+            local_ip = sock.getsockname()[0]
+        return f"http://{local_ip}:{port}"
+    except Exception:
+        return f"http://localhost:{port}"
+
+
 # QR Code Generation Function
 def generate_table_qr_codes():
     """Generate QR codes for tables 1-10"""
     # Create qrcodes directory if it doesn't exist
     os.makedirs('static/qrcodes', exist_ok=True)
     
-    # For local development, use localhost
-    # For production or network access, set BASE_URL environment variable
-    # Example: export BASE_URL=http://192.168.1.100:5000
-    base_url = os.getenv('BASE_URL', 'http://localhost:5000')  # Change this to your actual domain in production
+    base_url = get_server_base_url()
     
     generated_files = []
     for table_num in range(1, 11):
@@ -362,6 +411,62 @@ def view_qrcodes():
                 'url': url_for('static', filename=f'qrcodes/table_{table_num}.png')
             })
     return render_template('qrcodes_view.html', qrcodes=qrcodes)
+
+@app.route('/generate_bank_qr/<float:amount>')
+def generate_bank_qr(amount):
+    """Generate bank transfer QR code with amount"""
+    # UPI format for bank transfer
+    upi_id = "mudcafe@cnrb"  # Replace with actual UPI ID
+    merchant_name = "Mud Cafe"
+    payment_note = "Mud Cafe Order Payment"
+    
+    upi_url = (
+        f"upi://pay?pa={upi_id}&pn={merchant_name}&am={amount:.2f}"
+        f"&cu=INR&tn={payment_note.replace('mudcafe@cnrb', '%20')}"
+    )
+    
+    # Create QR code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(upi_url)
+    qr.make(fit=True)
+    
+    # Generate image
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Save to BytesIO
+    img_io = BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+    
+    return send_file(img_io, mimetype='image/png')
+
+@app.route('/generate_upi_qr')
+def generate_upi_qr():
+    """Generate a QR code directly from a UPI payment URI."""
+    upi_uri = request.args.get('upi_uri')
+    if not upi_uri:
+        return jsonify({'error': 'Missing upi_uri parameter'}), 400
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(upi_uri)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+    img_io = BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+
+    return send_file(img_io, mimetype='image/png')
 
 @app.route('/scan')
 def scan():
@@ -535,7 +640,7 @@ def initiate_payment():
         'success': True,
         'amount': total_amount,
         'transaction_id': transaction_id,
-        'payment_methods': ['UPI', 'Card', 'Cash', 'QR Code']
+        'payment_methods': ['UPI', 'Card', 'Cash', 'QR Code', 'Bank Transfer']
     })
 
 @app.route('/process_payment', methods=['POST'])
@@ -543,38 +648,46 @@ def process_payment():
     """Process the payment after user selects method"""
     data = request.json
     payment_method = data.get('payment_method')
-    
+
     pending = session.get('pending_payment')
     if not pending:
         return jsonify({'error': 'No pending payment found'}), 400
-    
+
     table_number = pending['table_number']
     total_amount = pending['amount']
     transaction_id = pending['transaction_id']
     cart_items = pending['items']
-    
+
     try:
+        # Determine payment status based on method
+        if payment_method == 'Bank Transfer':
+            payment_status = 'pending'
+            cart_status = 'Payment Pending'
+        else:
+            payment_status = 'completed'
+            cart_status = 'Paid'
+
         # Save to database
         conn = sqlite3.connect('instance/restaurant.db')
         cursor = conn.cursor()
-        
+
         # Insert order
         order_date = datetime.now()
         cursor.execute('''
             INSERT INTO completed_orders 
             (table_number, total_amount, order_date, completed_date, payment_status, payment_method, transaction_id)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (table_number, total_amount, order_date, order_date, 'completed', payment_method, transaction_id))
-        
+        ''', (table_number, total_amount, order_date, order_date, payment_status, payment_method, transaction_id))
+
         order_id = cursor.lastrowid
-        
+
         # Insert order items with category mapping
         full_menu = get_full_menu()
         item_to_category = {}
         for category_name, items in full_menu.items():
             for item in items:
                 item_to_category[item['id']] = category_name
-        
+
         for item_id, item_details in cart_items.items():
             category = item_to_category.get(item_id, 'other')
             cursor.execute('''
@@ -582,23 +695,23 @@ def process_payment():
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (order_id, item_details['name'], item_details['price'], 
                   item_details['quantity'], category, order_date))
-        
+
         # Insert payment record
         cursor.execute('''
             INSERT INTO payments (order_id, amount, payment_method, payment_status, transaction_id, payment_date)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (order_id, total_amount, payment_method, 'completed', transaction_id, order_date))
-        
+        ''', (order_id, total_amount, payment_method, payment_status, transaction_id, order_date))
+
         conn.commit()
         conn.close()
-        
+
         # Update cart status
         if table_number in CART:
-            CART[table_number]['_meta']['status'] = 'Paid'
-            CART[table_number]['_meta']['payment_status'] = 'completed'
+            CART[table_number]['_meta']['status'] = cart_status
+            CART[table_number]['_meta']['payment_status'] = payment_status
             CART[table_number]['_meta']['payment_method'] = payment_method
             CART[table_number]['_meta']['transaction_id'] = transaction_id
-        
+
         # Emit notification to admin
         socketio.emit('payment_completed_notification', {
             'table_number': table_number,
@@ -606,20 +719,20 @@ def process_payment():
             'payment_method': payment_method,
             'message': f'💳 Payment received: Table {table_number} - ₹{total_amount:.2f} via {payment_method}'
         })
-        
+
         # Emit order update to admin
         socketio.emit('admin_cart_update', {'carts': CART})
-        
+
         # Clear pending payment from session
         session.pop('pending_payment', None)
-        
+
         return jsonify({
             'success': True,
             'message': 'Payment processed successfully!',
             'order_id': order_id,
             'transaction_id': transaction_id
         })
-        
+
     except Exception as e:
         print(f"Payment processing error: {e}")
         return jsonify({'error': str(e)}), 500

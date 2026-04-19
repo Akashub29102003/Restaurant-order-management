@@ -7,6 +7,24 @@
 {% endblock %}
 
 {% block content %}
+{% set category_images = {
+    'TEA TONES': 'tea_tones.svg',
+    'MILKSHAKES': 'milkshakes.svg',
+    'QUICK BITES': 'quick_bites.svg',
+    'BUSY BURGER': 'busy_burger.svg',
+    'NUGGETS': 'nuggets.svg',
+    'CRAVY COFEE': 'cravy_cofee.svg',
+    'BUN BLAST': 'bun_blast.svg',
+    'MAZZA MOMOS': 'mazza_momos.svg',
+    'EGG PANDA': 'egg_panda.svg',
+    'MILK WAY': 'milk_way.svg',
+    'SOSI SANDWICH': 'sosi_sandwich.svg',
+    'GOL GAPPA': 'gol_gappa.svg',
+    'COLD TIK TOK': 'cold_tik_tok.svg',
+    'FRIFAS FASHION': 'frifas_fashion.svg',
+    'PASTA PORSH': 'pasta_porsh.svg',
+    'MAZZA MAGGIE': 'mazza_maggie.svg'
+} %}
 <div class="category-container">
     <!-- Animated background decorations -->
     <div class="category-background-decorations">
@@ -24,13 +42,13 @@
     
     <div class="category-grid">
         {% for category in categories %}
-        <a href="{{ url_for('menu', category=category, table_number=session.get('table_number')) }}" class="category-card glass-card fade-in-up" style="animation-delay: {{ 0.2 + loop.index0 * 0.1 }}s;">
+        <a href="{{ url_for('menu', category=category, table_number=session.get('table_number')) }}" class="category-card glass-card fade-in-up" data-animation-delay="{{ (0.2 + loop.index0 * 0.1)|round(1) }}s">
             <div class="card-background">
-                <img src="{{ url_for('static', filename='images/leaf.svg') }}" class="category-bg-image" alt="{{ category|e }}">
+                <img src="{{ url_for('static', filename='images/' + category_images.get(category, 'leaf.svg')) }}" class="category-bg-image" alt="{{ category|e }}">
             </div>
             <div class="card-content">
                 <div class="category-icon">
-                    <img src="{{ url_for('static', filename='images/leaf.svg') }}" alt="{{ category|e }} Icon">
+                    <img src="{{ url_for('static', filename='images/' + category_images.get(category, 'leaf.svg')) }}" alt="{{ category|e }} Icon">
                 </div>
                 <h2>{{ category|e }}</h2>
                 <p>Browse delicious items from the {{ category|lower|e }} category</p>
@@ -59,6 +77,8 @@ document.addEventListener('DOMContentLoaded', function() {
     animatedElements.forEach((el, index) => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(30px)';
+        const delay = el.dataset.animationDelay || `${0.1 + index * 0.1}s`;
+        el.style.animationDelay = delay;
         setTimeout(() => {
             el.style.transition = 'all 0.6s ease';
             el.style.opacity = '1';

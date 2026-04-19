@@ -337,6 +337,58 @@
                         <span class="method-icon">📷</span>
                         <span>QR Code</span>
                     </button>
+                    <button class="payment-method-btn" data-method="Bank Transfer">
+                        <span class="method-icon">🏦</span>
+                        <span>Bank Transfer</span>
+                    </button>
+                </div>
+                <div id="bankDetails" class="bank-details" style="display: none; margin-top: 20px; padding: 16px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; background: rgba(255,255,255,0.03);">
+                    <h4>Bank Transfer Details</h4>
+                    <p>Please transfer the total amount to one of the following accounts and keep the bank statement for confirmation.</p>
+                    <ul>
+                        <li>Account Name: <strong>Mud Cups</strong></li>
+                        <li>Account Number: <strong>1234567890</strong></li>
+                        <li>IFSC Code: <strong>SBIN0001234</strong></li>
+                        <li>Branch: <strong>MG Road Branch</strong></li>
+                    </ul>
+                    <p>Scan the QR code below for easy UPI payment:</p>
+                    <div style="text-align: center; margin: 10px 0;">
+                        <img id="bankTransferQR" src="" alt="Bank Transfer QR Code" style="max-width: 200px; border: 2px solid #fff; border-radius: 8px;" onerror="this.style.display='none';">
+                    </div>
+                    <p>After transfer, show the bank statement to the staff or send a photo to confirm the payment.</p>
+                    <p>
+                        <a href="{{ url_for('static', filename='images/bank_qr.pdf') }}" target="_blank" style="color: #4a90e2; text-decoration: underline;">Open bank details PDF</a>
+                        or
+                        <a href="{{ url_for('static', filename='images/bank_qr.pdf') }}" download style="color: #4a90e2; text-decoration: underline;">download it</a>.
+                    </p>
+                    <p style="font-size: 0.9rem; color: #666;">If your bank details PDF is in a different location, copy it into <code>static/images/</code> and update this link.</p>
+                </div>
+                <div id="upiDetails" class="bank-details" style="display: none; margin-top: 20px; padding: 16px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; background: rgba(255,255,255,0.03);">
+                    <h4>UPI Payment</h4>
+                    <p>Scan this QR code using your UPI app or use the UPI ID to pay instantly.</p>
+                    <div style="text-align: center; margin: 10px 0;">
+                        <img id="upiPaymentQRCode" src="" alt="UPI Payment QR Code" style="max-width: 220px; border: 2px solid #fff; border-radius: 8px;" onerror="this.style.display='none';">
+                    </div>
+                    <p style="font-size: 0.95rem; color: #666;">If the QR does not load, refresh the page and try again.</p>
+                    <p><strong>UPI ID:</strong> mudcafe@cnrb</p>
+                </div>
+                <div id="cardDetails" class="bank-details" style="display: none; margin-top: 20px; padding: 16px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; background: rgba(255,255,255,0.03);">
+                    <h4>Card Payment</h4>
+                    <p>Card payments are accepted at the counter. Please confirm with the staff after placing your order.</p>
+                    <p style="font-size: 0.95rem; color: #666;">This option is currently a simulated card payment flow.</p>
+                </div>
+                <div id="cashDetails" class="bank-details" style="display: none; margin-top: 20px; padding: 16px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; background: rgba(255,255,255,0.03);">
+                    <h4>Cash Payment</h4>
+                    <p>Pay the total amount in cash to the staff once the order is ready.</p>
+                    <p style="font-size: 0.95rem; color: #666;">No online payment is required for cash orders.</p>
+                </div>
+                <div id="qrCodeDetails" class="bank-details" style="display: none; margin-top: 20px; padding: 16px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; background: rgba(255,255,255,0.03);">
+                    <h4>QR Code Payment</h4>
+                    <p>Scan this QR code using your UPI app to pay the order amount instantly.</p>
+                    <div style="text-align: center; margin: 10px 0;">
+                        <img id="paymentQRCode" src="" alt="Payment QR Code" style="max-width: 220px; border: 2px solid #fff; border-radius: 8px;" onerror="this.style.display='none';">
+                    </div>
+                    <p style="font-size: 0.95rem; color: #666;">If the QR does not load, refresh the page and try again.</p>
                 </div>
             </div>
             <div class="payment-actions">
@@ -354,6 +406,15 @@ let selectedPaymentMethod = null;
 
 function showPaymentModal(amount) {
     document.getElementById('paymentAmount').textContent = amount.toFixed(2);
+    document.getElementById('bankDetails').style.display = 'none';
+    document.getElementById('upiDetails').style.display = 'none';
+    document.getElementById('cardDetails').style.display = 'none';
+    document.getElementById('cashDetails').style.display = 'none';
+    document.getElementById('qrCodeDetails').style.display = 'none';
+    document.getElementById('bankTransferQR').src = '';
+    document.getElementById('upiPaymentQRCode').src = '';
+    document.getElementById('paymentQRCode').src = '';
+    
     document.getElementById('paymentModal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
@@ -428,6 +489,58 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('selected');
             selectedPaymentMethod = this.dataset.method;
             document.getElementById('processPaymentBtn').disabled = false;
+
+            const bankDetails = document.getElementById('bankDetails');
+            const qrCodeDetails = document.getElementById('qrCodeDetails');
+            const amount = parseFloat(document.getElementById('paymentAmount').textContent || '0');
+
+            const encodedAmount = encodeURIComponent(amount.toFixed(2));
+            const cacheBypass = `_ts=${Date.now()}`;
+
+            if (selectedPaymentMethod === 'Bank Transfer') {
+                bankDetails.style.display = 'block';
+                qrCodeDetails.style.display = 'none';
+                document.getElementById('bankTransferQR').src = `/generate_bank_qr/${encodedAmount}?${cacheBypass}`;
+            } else if (selectedPaymentMethod === 'UPI') {
+                bankDetails.style.display = 'none';
+                qrCodeDetails.style.display = 'none';
+                document.getElementById('upiDetails').style.display = 'block';
+                document.getElementById('cardDetails').style.display = 'none';
+                document.getElementById('cashDetails').style.display = 'none';
+                document.getElementById('upiPaymentQRCode').src = `/generate_bank_qr/${encodedAmount}?${cacheBypass}`;
+            } else if (selectedPaymentMethod === 'Card') {
+                bankDetails.style.display = 'none';
+                qrCodeDetails.style.display = 'none';
+                document.getElementById('upiDetails').style.display = 'none';
+                document.getElementById('cardDetails').style.display = 'block';
+                document.getElementById('cashDetails').style.display = 'none';
+            } else if (selectedPaymentMethod === 'Cash') {
+                bankDetails.style.display = 'none';
+                qrCodeDetails.style.display = 'none';
+                document.getElementById('upiDetails').style.display = 'none';
+                document.getElementById('cardDetails').style.display = 'none';
+                document.getElementById('cashDetails').style.display = 'block';
+            } else if (selectedPaymentMethod === 'QR Code') {
+                bankDetails.style.display = 'none';
+                qrCodeDetails.style.display = 'block';
+                document.getElementById('upiDetails').style.display = 'none';
+                document.getElementById('cardDetails').style.display = 'none';
+                document.getElementById('cashDetails').style.display = 'none';
+                document.getElementById('paymentQRCode').src = `/generate_bank_qr/${encodedAmount}?${cacheBypass}`;
+            } else if (selectedPaymentMethod === 'Bank Transfer') {
+                bankDetails.style.display = 'block';
+                qrCodeDetails.style.display = 'none';
+                document.getElementById('upiDetails').style.display = 'none';
+                document.getElementById('cardDetails').style.display = 'none';
+                document.getElementById('cashDetails').style.display = 'none';
+                document.getElementById('bankTransferQR').src = `/generate_bank_qr/${encodedAmount}?${cacheBypass}`;
+            } else {
+                bankDetails.style.display = 'none';
+                qrCodeDetails.style.display = 'none';
+                document.getElementById('upiDetails').style.display = 'none';
+                document.getElementById('cardDetails').style.display = 'none';
+                document.getElementById('cashDetails').style.display = 'none';
+            }
         });
     });
     
@@ -462,7 +575,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const paymentData = await paymentResponse.json();
                 
                 if (paymentData.success) {
-                    showToastMessage('Payment successful! Redirecting...', 'success');
+                    const isBankTransfer = selectedPaymentMethod === 'Bank Transfer';
+                    const successMessage = isBankTransfer ? 
+                        'Order placed! Please complete bank transfer and show receipt to staff.' : 
+                        'Payment successful! Redirecting...';
+                    
+                    showToastMessage(successMessage, 'success');
                     
                     // Close modal
                     closePaymentModal();
@@ -473,15 +591,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     const btnLoading = placeBtn.querySelector('.btn-loading');
                     
                     btnLoading.style.display = 'none';
-                    btnText.textContent = 'Order Placed! ✓';
+                    btnText.textContent = isBankTransfer ? 'Order Placed! ⏳' : 'Order Placed! ✓';
                     btnText.style.display = 'inline';
                     placeBtn.classList.add('success');
                     
                     // Update order status
                     const statusContainer = document.querySelector('.order-status');
                     if (statusContainer) {
-                        statusContainer.textContent = 'Paid';
-                        statusContainer.className = 'order-status paid';
+                        statusContainer.textContent = isBankTransfer ? 'Payment Pending' : 'Paid';
+                        statusContainer.className = `order-status ${isBankTransfer ? 'pending' : 'paid'}`;
                     }
                     
                     // Redirect to confirmation page

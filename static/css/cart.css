@@ -343,6 +343,16 @@
     animation: pulse 2s infinite;
 }
 
+.order-status.pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.order-status.paid {
+    background: #d4edda;
+    color: #155724;
+}
+
 /* Place Order Button */
 .place-order-btn {
     width: 100%;
